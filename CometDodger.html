@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Comet Dodge</title>
+<style>
+:root{--bg:#eef1f6;--ink:#1b2233;--muted:#5a647a;--sky:#0f1630;--accent:#ffb703;--hit:#ff5d73;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0a0e1d;--ink:#e8ecf7;--muted:#8d97b0}}
+:root[data-theme="dark"]{--bg:#0a0e1d;--ink:#e8ecf7;--muted:#8d97b0}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Trebuchet MS",Verdana,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px}
+h1{margin:0;font-size:1.6rem;letter-spacing:.02em}
+.bar{display:flex;justify-content:space-between;width:min(420px,100%);font-size:1rem}
+canvas{width:min(420px,100%);aspect-ratio:3/4;background:var(--sky);border-radius:10px;touch-action:none;display:block}
+p{margin:0;color:var(--muted);font-size:.9rem;text-align:center;max-width:420px}
+button{font:inherit;padding:8px 18px;border-radius:8px;border:2px solid var(--ink);background:var(--accent);color:#1b2233;cursor:pointer}
+button:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+</style>
+</head>
+<body>
+<h1>Comet Dodge</h1>
+<div class="bar"><span>Score: <b id="score">0</b></span><span>Best: <b id="best">0</b></span></div>
+<canvas id="c" width="420" height="560" aria-label="Game area"></canvas>
+<p>Move with ← → or A / D, or drag on the screen. Grab the stars, avoid the rocks.</p>
+<button id="btn">Start game</button>
+<script>
+const cv=document.getElementById('c'),ctx=cv.getContext('2d'),W=cv.width,H=cv.height;
+const scoreEl=document.getElementById('score'),bestEl=document.getElementById('best'),btn=document.getElementById('btn');
+let best=0;try{best=+localStorage.getItem('cometBest')||0}catch(e){}
+bestEl.textContent=best;
+let ship,items,score,lives,t,running=false,keys={},stars=[];
+for(let i=0;i<50;i++)stars.push({x:Math.random()*W,y:Math.random()*H,s:Math.random()*1.5+.5});
+function reset(){ship={x:W/2,y:H-50,w:34};items=[];score=0;lives=3;t=0;scoreEl.textContent=0}
+function start(){reset();running=true;btn.textContent='Restart';loop()}
+btn.onclick=start;
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;if(e.key.startsWith('Arrow'))e.preventDefault()});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=false);
+function pointer(e){const r=cv.getBoundingClientRect();ship&&(ship.x=(e.clientX-r.left)/r.width*W)}
+cv.addEventListener('pointermove',pointer);cv.addEventListener('pointerdown',pointer);
+function spawn(){
+  const star=Math.random()<.28;
+  items.push({x:20+Math.random()*(W-40),y:-20,r:star?11:14+Math.random()*10,v:2+Math.random()*1.5+t/1500,star,rot:0});
+}
+function update(){
+  t++;
+  const sp=6;
+  if(keys['arrowleft']||keys['a'])ship.x-=sp;
+  if(keys['arrowright']||keys['d'])ship.x+=sp;
+  ship.x=Math.max(ship.w/2,Math.min(W-ship.w/2,ship.x));
+  if(t%Math.max(14,40-Math.floor(t/200))===0)spawn();
+  for(const it of items){it.y+=it.v;it.rot+=.05}
+  items=items.filter(it=>{
+    const hit=Math.hypot(it.x-ship.x,it.y-ship.y)<it.r+ship.w/2-6;
+    if(hit){
+      if(it.star){score+=10;scoreEl.textContent=score}
+      else{lives--;flash=8}
+      return false;
+    }
+    return it.y<H+30;
+  });
+  if(lives<=0)end();
+}
+let flash=0;
+function end(){
+  running=false;
+  if(score>best){best=score;bestEl.textContent=best;try{localStorage.setItem('cometBest',best)}catch(e){}}
+  btn.textContent='Play again';
+}
+function drawStar(x,y,r,rot){
+  ctx.beginPath();
+  for(let i=0;i<10;i++){const a=rot+i*Math.PI/5,rr=i%2?r*.45:r;ctx.lineTo(x+Math.cos(a)*rr,y+Math.sin(a)*rr)}
+  ctx.closePath();ctx.fill();
+}
+function draw(){
+  ctx.fillStyle=flash>0?'#3a1530':'#0f1630';ctx.fillRect(0,0,W,H);
+  if(flash>0)flash--;
+  ctx.fillStyle='#fff';
+  for(const s of stars){ctx.globalAlpha=.4+s.s/3;ctx.fillRect(s.x,(s.y+t*s.s*.3)%H,s.s,s.s)}
+  ctx.globalAlpha=1;
+  if(!ship)return;
+  for(const it of items){
+    if(it.star){ctx.fillStyle='#ffb703';drawStar(it.x,it.y,it.r,it.rot)}
+    else{ctx.fillStyle='#8a93a8';ctx.beginPath();
+      for(let i=0;i<7;i++){const a=it.rot+i*Math.PI*2/7,rr=it.r*(i%2?.8:1);ctx.lineTo(it.x+Math.cos(a)*rr,it.y+Math.sin(a)*rr)}
+      ctx.closePath();ctx.fill()}
+  }
+  ctx.fillStyle='#4cc9f0';ctx.beginPath();
+  ctx.moveTo(ship.x,ship.y-20);ctx.lineTo(ship.x+ship.w/2,ship.y+16);ctx.lineTo(ship.x,ship.y+8);ctx.lineTo(ship.x-ship.w/2,ship.y+16);
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle='#ff5d73';
+  for(let i=0;i<lives;i++){ctx.beginPath();ctx.arc(18+i*20,20,6,0,7);ctx.fill()}
+  if(!running){
+    ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(0,0,W,H);
+    ctx.fillStyle='#fff';ctx.textAlign='center';ctx.font='bold 28px Trebuchet MS, sans-serif';
+    ctx.fillText(lives<=0?'Game over':'Ready?',W/2,H/2-10);
+    ctx.font='18px Trebuchet MS, sans-serif';
+    if(lives<=0)ctx.fillText('Final score: '+score,W/2,H/2+24);
+  }
+}
+function loop(){if(!running){draw();return}update();draw();requestAnimationFrame(loop)}
+reset();draw();
+</script>
+</body>
+</html>
