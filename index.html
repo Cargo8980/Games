@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>School</title>
+</head>
+<body>
+
+<h1>Games</h1>
+
+<button onclick="openCometDodger()">Play Comet Dodger</button>
+<button onclick="openSwamSurvivor()">Play Swam Survivor</button>
+
+
+<script>
+const cometDodger = "https://cargo8980.github.io/Games/CometDodger.html";
+const swarmSuvivor = "https://cargo8980.github.io/Games/SwamSurvivor.html";
+function openCometDodger() {
+    const url = cometDodger;
+
+    // Open a blank tab
+    const w = window.open("about:blank");
+
+    // Fetch the GitHub-hosted HTML file
+    fetch(url)
+        .then(response => response.text())
+        .then(html => {
+            w.document.open();
+            w.document.write(html);
+            w.document.close();
+        })
+        .catch(err => {
+            alert("Failed to load GitHub HTML: " + err);
+        });
+}
+
+function openSwamSurvivor() {
+    const url = swarmSuvivor;
+
+    // Open a blank tab
+    const w = window.open("about:blank");
+
+    // Fetch the GitHub-hosted HTML file
+    fetch(url)
+        .then(response => response.text())
+        .then(html => {
+            w.document.open();
+            w.document.write(html);
+            w.document.close();
+        })
+        .catch(err => {
+            alert("Failed to load GitHub HTML: " + err);
+        });
+}
+</script>
+
+</body>
+</html>
